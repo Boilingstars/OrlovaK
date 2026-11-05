@@ -365,7 +365,7 @@ def gwh_one(index, gwh, vecfle, dest_root, n, threads):
         "--Random",
         "--Opt",
         "--AddMethod",
-        " --alpb water --gfn 2 ",
+        " --alpb water --gfn 2 --uhf 0 ",
     ]
     rc = run(cmd, job, "gwh_one.log", xtb_env(threads))
     src = job / "gwh_opt_str0000"
@@ -404,7 +404,7 @@ def gwh(args):
     else:
         vecfle = write_radius_vecfle(args.n, radius, base / f"packing_r{radius:.2f}.vecfle")
     provenance = {
-        "command_template": "gloriouswaterhole.py -f packing.vecfle --Charge +1 --Mult 1 --NumStruct 1 --Random --Opt --AddMethod ' --alpb water --gfn 2 '",
+        "command_template": "gloriouswaterhole.py -f packing.vecfle --Charge +1 --Mult 1 --NumStruct 1 --Random --Opt --AddMethod ' --alpb water --gfn 2 --uhf 0 '",
         "parallel_processes": args.workers,
         "random_seed_rule": "python.random.seed(20261104 + n*1000 + start_index)",
         "random_seed_base": 20261104 + args.n*1000,

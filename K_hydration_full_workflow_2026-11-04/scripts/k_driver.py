@@ -130,29 +130,37 @@ def after_characterize(n):
     except Exception as ex:emit(f'WARNING workbook export after n={n}: {ex}')
 
 
+def _xtb_process_count():
+    """Count foreign xtb executables. Never used to kill anything."""
+    if os.name == 'nt':
+        proc=subprocess.run(
+            ['powershell','-NoProfile','-Command',
+             '@(Get-Process -Name xtb -ErrorAction SilentlyContinue).Count'],
+            capture_output=True,text=True,timeout=25,check=False)
+        if proc.returncode != 0:
+            raise RuntimeError('xtb process query failed')
+        return int(proc.stdout.strip().splitlines()[-1])
+    proc=subprocess.run(['pgrep','-x','xtb'],capture_output=True,text=True,timeout=25,check=False)
+    if proc.returncode not in (0,1):
+        raise RuntimeError('xtb process query failed')
+    pids=[p for p in proc.stdout.split() if p.isdigit()]
+    return len(pids)
+
+
 def wait_for_idle_xtb():
     """Defer initial heavy launch while another xTB executable is already running.
     This NEVER terminates another process; checking resource availability is best effort.
     """
-    if os.name != 'nt':
-        return
     announced=False
     while True:
         try:
-            proc=subprocess.run(
-                ['powershell','-NoProfile','-Command',
-                 '@(Get-Process -Name xtb -ErrorAction SilentlyContinue).Count'],
-                capture_output=True,text=True,timeout=25,check=False)
-            if proc.returncode != 0:
-                emit('WARNING: external xTB status not available; check machine load before starting')
-                return
-            count=int(proc.stdout.strip().splitlines()[-1])
+            count=_xtb_process_count()
             if count==0:return
             if not announced:
                 emit(f'Other xTB processes active: {count}; defer heavy launch without terminating them')
                 announced=True
             time.sleep(60)
-        except (ValueError, subprocess.TimeoutExpired, IndexError):
+        except (ValueError, subprocess.TimeoutExpired, IndexError, RuntimeError):
             emit('WARNING: could not confirm machine idle; inspect running xTB processes')
             return
 
@@ -197,8 +205,8 @@ def main():
     ap.add_argument('--status',action='store_true')
     ap.add_argument('--analysis-only',action='store_true')
     ap.add_argument('--dry-run',action='store_true')
-    ap.add_argument('--workers',type=int,default=2)
-    ap.add_argument('--relax-workers',type=int,default=2)
+    ap.add_argument('--workers',type=int,default=5)
+    ap.add_argument('--relax-workers',type=int,default=4)
     ap.add_argument('--threads',type=int,default=1)
     ap.add_argument('--retries',type=int,default=2)
     ap.add_argument('--scale',type=float,default=1.0)
